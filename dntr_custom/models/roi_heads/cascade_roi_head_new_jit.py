@@ -521,7 +521,7 @@ class Cascade_t2t_new_jit_mask_RoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin
         rois = bbox2roi([res.bboxes for res in sampling_results])
         bbox_results = self._bbox_forward(stage, x, rois)
         bbox_targets = self.bbox_head[stage].get_targets(
-            sampling_results, gt_bboxes, gt_labels, rcnn_train_cfg)
+            sampling_results, rcnn_train_cfg)
         loss_bbox = self.bbox_head[stage].loss(bbox_results['cls_score'],
                                                bbox_results['bbox_pred'], rois,
                                                *bbox_targets)
