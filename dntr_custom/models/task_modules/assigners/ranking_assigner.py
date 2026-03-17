@@ -57,6 +57,7 @@ class RankingAssigner(BaseAssigner):
                 gt_labels = gt_labels.cpu()
 
         overlaps = self.iou_calculator(gt_bboxes, bboxes, mode=self.assign_metric)
+        overlaps = torch.nan_to_num(overlaps, nan=0.0, posinf=1.0, neginf=0.0)
 
         if (
             self.ignore_iof_thr > 0
@@ -100,12 +101,13 @@ class RankingAssigner(BaseAssigner):
             return AssignResult(num_gts, assigned_gt_inds, max_overlaps, labels=assigned_labels)
 
         max_overlaps, _ = overlaps.max(dim=0)
-        gt_max_overlaps, _ = overlaps.topk(self.topk, dim=1, largest=True, sorted=True)
+        k = min(self.topk, num_bboxes)
+        gt_max_overlaps, _ = overlaps.topk(k, dim=1, largest=True, sorted=True)
 
         assigned_gt_inds[(max_overlaps >= 0) & (max_overlaps < 0.3)] = 0
 
         for i in range(num_gts):
-            for j in range(self.topk):
+            for j in range(k):
                 max_overlap_inds = overlaps[i, :] == gt_max_overlaps[i, j]
                 assigned_gt_inds[max_overlap_inds] = i + 1
 

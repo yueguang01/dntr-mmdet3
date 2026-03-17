@@ -55,8 +55,22 @@ def bbox_overlaps(
     if rows * cols == 0:
         return bboxes1.new(batch_shape + (rows, cols))
 
-    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] - bboxes1[..., 1])
-    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] - bboxes2[..., 1])
+    # Normalize malformed boxes to avoid negative width/height causing NaN cascades.
+    b1_x1 = torch.minimum(bboxes1[..., 0], bboxes1[..., 2])
+    b1_y1 = torch.minimum(bboxes1[..., 1], bboxes1[..., 3])
+    b1_x2 = torch.maximum(bboxes1[..., 0], bboxes1[..., 2])
+    b1_y2 = torch.maximum(bboxes1[..., 1], bboxes1[..., 3])
+    b2_x1 = torch.minimum(bboxes2[..., 0], bboxes2[..., 2])
+    b2_y1 = torch.minimum(bboxes2[..., 1], bboxes2[..., 3])
+    b2_x2 = torch.maximum(bboxes2[..., 0], bboxes2[..., 2])
+    b2_y2 = torch.maximum(bboxes2[..., 1], bboxes2[..., 3])
+    bboxes1 = torch.stack([b1_x1, b1_y1, b1_x2, b1_y2], dim=-1)
+    bboxes2 = torch.stack([b2_x1, b2_y1, b2_x2, b2_y2], dim=-1)
+
+    area1 = ((bboxes1[..., 2] - bboxes1[..., 0]).clamp(min=0)
+             * (bboxes1[..., 3] - bboxes1[..., 1]).clamp(min=0))
+    area2 = ((bboxes2[..., 2] - bboxes2[..., 0]).clamp(min=0)
+             * (bboxes2[..., 3] - bboxes2[..., 1]).clamp(min=0))
 
     lt = torch.max(bboxes1[..., :, None, :2], bboxes2[..., None, :, :2])
     rb = torch.min(bboxes1[..., :, None, 2:], bboxes2[..., None, :, 2:])
@@ -75,7 +89,7 @@ def bbox_overlaps(
     ious = overlap / union
 
     if mode in ['iou', 'iof']:
-        return ious
+        return torch.nan_to_num(ious, nan=0.0, posinf=1.0, neginf=0.0)
 
     if mode in ['giou', 'normalized_giou', 'ciou', 'diou']:
         enclose_wh = (enclosed_rb - enclosed_lt).clamp(min=0)
@@ -84,10 +98,11 @@ def bbox_overlaps(
         gious = ious - (enclose_area - union) / enclose_area
 
     if mode == 'giou':
-        return gious
+        return torch.nan_to_num(gious, nan=0.0, posinf=1.0, neginf=-1.0)
 
     if mode == 'normalized_giou':
-        return (1 + gious) / 2
+        out = (1 + gious) / 2
+        return torch.nan_to_num(out, nan=0.0, posinf=1.0, neginf=0.0)
 
     if mode == 'diou':
         center1 = (bboxes1[..., :, None, :2] + bboxes1[..., :, None, 2:]) / 2
@@ -99,7 +114,8 @@ def bbox_overlaps(
             enclose_wh[..., 0] * enclose_wh[..., 0] + enclose_wh[..., 1] * enclose_wh[..., 1]
         )
         dious = ious - center_distance / torch.max(enclosed_diagonal_distances, eps_t)
-        return torch.clamp(dious, min=-1.0, max=1.0)
+        out = torch.clamp(dious, min=-1.0, max=1.0)
+        return torch.nan_to_num(out, nan=0.0, posinf=1.0, neginf=-1.0)
 
     if mode == 'ciou':
         center1 = (bboxes1[..., :, None, :2] + bboxes1[..., :, None, 2:]) / 2
@@ -122,7 +138,8 @@ def bbox_overlaps(
             center_distance / torch.max(enclosed_diagonal_distances, eps_t)
             + v ** 2 / torch.max(1 - ious + v, eps_t)
         )
-        return torch.clamp(cious, min=-1.0, max=1.0)
+        out = torch.clamp(cious, min=-1.0, max=1.0)
+        return torch.nan_to_num(out, nan=0.0, posinf=1.0, neginf=-1.0)
 
     if mode == 'nwd':
         center1 = (bboxes1[..., :, None, :2] + bboxes1[..., :, None, 2:]) / 2
@@ -136,13 +153,15 @@ def bbox_overlaps(
         h2 = bboxes2[..., None, :, 3] - bboxes2[..., None, :, 1] + eps
 
         wh_distance = ((w1 - w2) ** 2 + (h1 - h2) ** 2) / (weight ** 2)
-        wassersteins = torch.sqrt(center_distance + wh_distance)
-        return torch.exp(-wassersteins / constant)
+        wassersteins = torch.sqrt(torch.clamp(center_distance + wh_distance, min=0))
+        out = torch.exp(-wassersteins / max(constant, eps))
+        return torch.nan_to_num(out, nan=0.0, posinf=1.0, neginf=0.0)
 
     # mode == 'dotd'
     center1 = (bboxes1[..., :, None, :2] + bboxes1[..., :, None, 2:]) / 2
     center2 = (bboxes2[..., None, :, :2] + bboxes2[..., None, :, 2:]) / 2
     whs = center1[..., :2] - center2[..., :2]
     center_distance = whs[..., 0] * whs[..., 0] + whs[..., 1] * whs[..., 1] + eps
-    distance = torch.sqrt(center_distance)
-    return torch.exp(-distance / constant)
+    distance = torch.sqrt(torch.clamp(center_distance, min=0))
+    out = torch.exp(-distance / max(constant, eps))
+    return torch.nan_to_num(out, nan=0.0, posinf=1.0, neginf=0.0)
