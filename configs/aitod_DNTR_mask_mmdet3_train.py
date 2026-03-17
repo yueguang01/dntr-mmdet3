@@ -143,12 +143,13 @@ model = dict(
     train_cfg=dict(
         rpn=dict(
             assigner=dict(
-                type='RankingAssigner',
+                type='MaxIoUAssigner',
+                pos_iou_thr=0.7,
+                neg_iou_thr=0.3,
+                min_pos_iou=0.3,
+                match_low_quality=True,
                 ignore_iof_thr=-1,
                 gpu_assign_thr=512,
-                iou_calculator=dict(type='BboxDistanceMetric'),
-                assign_metric='nwd',
-                topk=3,
             ),
             sampler=dict(
                 type='RandomSampler',
@@ -315,7 +316,8 @@ test_cfg = dict(type='TestLoop')
 
 optim_wrapper = dict(
     type='OptimWrapper',
-    optimizer=dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0001),
+    optimizer=dict(type='SGD', lr=0.0001, momentum=0.9, weight_decay=0.0001),
+    clip_grad=dict(max_norm=10.0, norm_type=2),
 )
 
 param_scheduler = [
