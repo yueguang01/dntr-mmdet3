@@ -518,7 +518,7 @@ class Cascade_t2t_new_jit_mask_RoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin
     def _bbox_forward_train(self, stage, x, sampling_results, gt_bboxes,
                             gt_labels, rcnn_train_cfg):
         """Run forward function and calculate loss for box head in training."""
-        rois = bbox2roi([res.bboxes for res in sampling_results])
+        rois = bbox2roi([res.priors for res in sampling_results])
         bbox_results = self._bbox_forward(stage, x, rois)
         bbox_targets = self.bbox_head[stage].get_targets(
             sampling_results, rcnn_train_cfg)
@@ -551,7 +551,7 @@ class Cascade_t2t_new_jit_mask_RoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin
                             bbox_feats=None):
         """Run forward function and calculate loss for mask head in
         training."""
-        pos_rois = bbox2roi([res.pos_bboxes for res in sampling_results])
+        pos_rois = bbox2roi([res.pos_priors for res in sampling_results])
         mask_results = self._mask_forward(stage, x, pos_rois)
 
         mask_targets = self.mask_head[stage].get_targets(
@@ -646,17 +646,11 @@ class Cascade_t2t_new_jit_mask_RoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin
 
             # refine bboxes
             if i < self.num_stages - 1:
-                pos_is_gts = [res.pos_is_gt for res in sampling_results]
-                # bbox_targets is a tuple
-                roi_labels = bbox_results['bbox_targets'][0]
                 with torch.no_grad():
-                    roi_labels = torch.where(
-                        roi_labels == self.bbox_head[i].num_classes,
-                        bbox_results['cls_score'][:, :-1].argmax(1),
-                        roi_labels)
                     proposal_list = self.bbox_head[i].refine_bboxes(
-                        bbox_results['rois'], roi_labels,
-                        bbox_results['bbox_pred'], pos_is_gts, img_metas)
+                        sampling_results, bbox_results, img_metas)
+                    if proposal_list is None:
+                        break
         # print(losses)
         return losses
 
