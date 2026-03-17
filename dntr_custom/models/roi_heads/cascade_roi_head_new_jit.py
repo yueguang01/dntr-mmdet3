@@ -607,7 +607,19 @@ class Cascade_t2t_new_jit_mask_RoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin
                     gt_bboxes_ignore = [None for _ in range(num_imgs)]
 
                 for j in range(num_imgs):
-                    pred_instances = InstanceData(priors=proposal_list[j])
+                    proposals = proposal_list[j]
+                    if isinstance(proposals, InstanceData):
+                        pred_instances = proposals
+                        if hasattr(pred_instances, 'priors'):
+                            pass
+                        elif hasattr(pred_instances, 'bboxes'):
+                            pred_instances.priors = pred_instances.bboxes
+                        else:
+                            raise AttributeError(
+                                'proposal InstanceData must contain `priors` or `bboxes`'
+                            )
+                    else:
+                        pred_instances = InstanceData(priors=proposals)
                     gt_instances = InstanceData(bboxes=gt_bboxes[j], labels=gt_labels[j])
                     gt_instances_ignore = (
                         InstanceData(bboxes=gt_bboxes_ignore[j])
