@@ -31,7 +31,18 @@ class RankingAssigner(BaseAssigner):
         self.assign_metric = assign_metric
         self.topk = topk
 
-    def assign(self, bboxes, gt_bboxes, gt_bboxes_ignore=None, gt_labels=None):
+    def assign(self, pred_instances, gt_instances, gt_instances_ignore=None, **kwargs):
+        # MMDet3: inputs are InstanceData objects; extract tensors
+        # pred_instances.priors holds anchor boxes (from anchor_head)
+        bboxes = pred_instances.priors if hasattr(pred_instances, 'priors') else pred_instances.bboxes
+        gt_bboxes = gt_instances.bboxes
+        gt_labels = gt_instances.labels if hasattr(gt_instances, 'labels') else None
+        gt_bboxes_ignore = (
+            gt_instances_ignore.bboxes
+            if gt_instances_ignore is not None and len(gt_instances_ignore) > 0
+            else None
+        )
+
         assign_on_cpu = (
             (self.gpu_assign_thr > 0) and (gt_bboxes.shape[0] > self.gpu_assign_thr)
         )
