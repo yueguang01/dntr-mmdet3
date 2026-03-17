@@ -2,6 +2,19 @@ import argparse
 import os
 import sys
 
+# Python 3.12 removed stdlib distutils, but some MMEngine versions still import
+# `distutils.errors` while collecting environment info.
+try:
+    import distutils  # type: ignore  # noqa: F401
+except ModuleNotFoundError:
+    import types
+    from setuptools._distutils import errors as _distutils_errors
+
+    _distutils_mod = types.ModuleType('distutils')
+    _distutils_mod.errors = _distutils_errors
+    sys.modules['distutils'] = _distutils_mod
+    sys.modules['distutils.errors'] = _distutils_errors
+
 from mmengine.config import Config
 from mmengine.runner import Runner
 
