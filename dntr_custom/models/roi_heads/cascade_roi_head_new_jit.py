@@ -22,6 +22,7 @@ from ..builder import HEADS, build_head, build_roi_extractor
 from .base_roi_head import BaseRoIHead
 from .test_mixins import BBoxTestMixin, MaskTestMixin
 from mmdet.models.utils import unpack_gt_instances
+from mmengine.structures import InstanceData
 
 ######### t2t model ##########
 from .t2t_models.t2t_vit_woshuffle import T2T_module
@@ -606,14 +607,22 @@ class Cascade_t2t_new_jit_mask_RoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin
                     gt_bboxes_ignore = [None for _ in range(num_imgs)]
 
                 for j in range(num_imgs):
+                    pred_instances = InstanceData(priors=proposal_list[j])
+                    gt_instances = InstanceData(bboxes=gt_bboxes[j], labels=gt_labels[j])
+                    gt_instances_ignore = (
+                        InstanceData(bboxes=gt_bboxes_ignore[j])
+                        if gt_bboxes_ignore[j] is not None else None
+                    )
+
                     assign_result = bbox_assigner.assign(
-                        proposal_list[j], gt_bboxes[j], gt_bboxes_ignore[j],
-                        gt_labels[j])
+                        pred_instances,
+                        gt_instances,
+                        gt_instances_ignore,
+                    )
                     sampling_result = bbox_sampler.sample(
                         assign_result,
-                        proposal_list[j],
-                        gt_bboxes[j],
-                        gt_labels[j],
+                        pred_instances,
+                        gt_instances,
                         feats=[lvl_feat[j][None] for lvl_feat in x])
                     sampling_results.append(sampling_result)
 

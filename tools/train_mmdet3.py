@@ -8,7 +8,25 @@ try:
     import distutils  # type: ignore  # noqa: F401
 except ModuleNotFoundError:
     import types
-    from setuptools._distutils import errors as _distutils_errors
+
+    _distutils_errors = types.ModuleType('distutils.errors')
+
+    class DistutilsError(Exception):
+        pass
+
+    class DistutilsModuleError(DistutilsError):
+        pass
+
+    class DistutilsClassError(DistutilsError):
+        pass
+
+    class DistutilsPlatformError(DistutilsError):
+        pass
+
+    _distutils_errors.DistutilsError = DistutilsError
+    _distutils_errors.DistutilsModuleError = DistutilsModuleError
+    _distutils_errors.DistutilsClassError = DistutilsClassError
+    _distutils_errors.DistutilsPlatformError = DistutilsPlatformError
 
     _distutils_mod = types.ModuleType('distutils')
     _distutils_mod.errors = _distutils_errors
