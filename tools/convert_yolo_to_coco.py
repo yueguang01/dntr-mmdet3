@@ -95,7 +95,11 @@ def convert_split(root, split, start_image_id=1, start_ann_id=1):
 
 def main():
     parser = argparse.ArgumentParser(description='Convert YOLO labels to COCO json for AI-TOD folder layout')
-    parser.add_argument('--root', default='D:/DNTR/AI-TOD', help='Dataset root with train/ and val/ folders')
+    parser.add_argument(
+        '--root',
+        default=os.environ.get('DNTR_DATA_ROOT', '/data/AI-TOD'),
+        help='Dataset root with train/ and val/ folders',
+    )
     parser.add_argument('--out-dir', default=None, help='Output annotations directory (default: <root>/annotations)')
     args = parser.parse_args()
 

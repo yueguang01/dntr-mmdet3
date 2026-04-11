@@ -1,0 +1,22 @@
+name: dntr_mmdet3
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy>=1.24,<2
+  - pytorch>=2.2
+  - torchvision
+  - pytorch-cuda=12.1
+  - pip:
+      - openmim>=0.3.9
+      - mmengine==0.10.7
+      - mmdet==3.3.0
+      - timm>=1.0.15
+      - torchprofile==0.1.0
+      - pycocotools
+      - pillow
+      - numba

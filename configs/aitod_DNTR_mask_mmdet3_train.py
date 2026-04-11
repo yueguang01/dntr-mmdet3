@@ -1,6 +1,8 @@
 # MMDet3 training config for DNTR (AI-TOD)
 # Converted from MMDet2 config: aitod_DNTR_mask.py
 
+import os
+
 custom_imports = dict(
     imports=['dntr_custom'],
     allow_failed_imports=False,
@@ -9,7 +11,7 @@ custom_imports = dict(
 default_scope = 'mmdet'
 
 # Local AI-TOD dataset root (YOLO-format source converted to COCO json by tools/convert_yolo_to_coco.py)
-data_root = 'D:/DNTR/AI-TOD/'
+data_root = os.environ.get('DNTR_DATA_ROOT', '/data/AI-TOD').rstrip('/') + '/'
 backend_args = None
 
 classes = (
